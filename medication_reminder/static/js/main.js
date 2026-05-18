@@ -22,6 +22,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateTextEl = document.getElementById('currentDateText');
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     dateTextEl.textContent = new Date(Date.now() + timeOffsetMs).toLocaleDateString('vi-VN', options);
+
+    // Auto-sync Sáng/Tối toggle button state on manual time input change
+    const remindTimeInput = document.getElementById('remindTime');
+    if (remindTimeInput) {
+        remindTimeInput.addEventListener('change', function() {
+            const toggleBtn = document.getElementById('timePeriodToggle');
+            if (!this.value || !toggleBtn) return;
+            let [hours, minutes] = this.value.split(':').map(Number);
+            if (hours >= 12) {
+                toggleBtn.innerHTML = '<i class="fa-solid fa-cloud-sun text-yellow"></i> Sáng (AM)';
+            } else {
+                toggleBtn.innerHTML = '<i class="fa-solid fa-cloud-moon text-blue"></i> Tối (PM)';
+            }
+        });
+    }
 });
 
 // Full UI Refresh helper
@@ -502,4 +517,46 @@ function formatDate(dateStr) {
     const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+// Sáng (AM) / Tối (PM) Toggle helper for time input
+function toggleTimePeriod() {
+    const timeInput = document.getElementById('remindTime');
+    const toggleBtn = document.getElementById('timePeriodToggle');
+    if (!timeInput || !toggleBtn) return;
+    
+    if (!timeInput.value) {
+        // Default to a PM time if empty
+        timeInput.value = "19:00";
+        toggleBtn.innerHTML = '<i class="fa-solid fa-cloud-sun text-yellow"></i> Sáng (AM)';
+        return;
+    }
+    
+    let [hours, minutes] = timeInput.value.split(':').map(Number);
+    if (hours < 12) {
+        // Shift +12 hours to PM (Evening/Tối)
+        hours += 12;
+        toggleBtn.innerHTML = '<i class="fa-solid fa-cloud-sun text-yellow"></i> Sáng (AM)';
+    } else {
+        // Shift -12 hours to AM (Morning/Sáng)
+        hours -= 12;
+        toggleBtn.innerHTML = '<i class="fa-solid fa-cloud-moon text-blue"></i> Tối (PM)';
+    }
+    
+    timeInput.value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+// Quick Preset Time Setter helper
+function setPresetTime(timeVal) {
+    const timeInput = document.getElementById('remindTime');
+    const toggleBtn = document.getElementById('timePeriodToggle');
+    if (!timeInput || !toggleBtn) return;
+    
+    timeInput.value = timeVal;
+    let [hours, minutes] = timeVal.split(':').map(Number);
+    if (hours >= 12) {
+        toggleBtn.innerHTML = '<i class="fa-solid fa-cloud-sun text-yellow"></i> Sáng (AM)';
+    } else {
+        toggleBtn.innerHTML = '<i class="fa-solid fa-cloud-moon text-blue"></i> Tối (PM)';
+    }
 }

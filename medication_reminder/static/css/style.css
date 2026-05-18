@@ -306,6 +306,27 @@ input:focus {
     box-shadow: 0 0 0 2px var(--border-glow);
 }
 
+/* Make calendar/clock picker icon pure bright white */
+input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+    opacity: 0.85;
+    transition: opacity 0.2s ease;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+.preset-btn:hover {
+    filter: brightness(1.25);
+    transform: translateY(-1px);
+}
+
+.preset-btn:active {
+    transform: translateY(0);
+}
+
 /* Buttons */
 .btn {
     display: inline-flex;

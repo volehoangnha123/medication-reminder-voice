@@ -162,7 +162,19 @@
                             </div>
                             <div class="form-group">
                                 <label for="remindTime"><i class="fa-solid fa-clock text-green"></i> Giờ nhắc</label>
-                                <input type="time" id="remindTime" required>
+                                <div class="time-input-group" style="display: flex; gap: 8px; align-items: center;">
+                                    <input type="time" id="remindTime" required style="flex: 1;">
+                                    <button type="button" id="timePeriodToggle" onclick="toggleTimePeriod()" class="btn" style="padding: 10px 14px; min-width: 100px; font-size: 13px; white-space: nowrap; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px;" title="Chuyển đổi giữa Sáng và Tối (PM)">
+                                        <i class="fa-solid fa-cloud-moon text-blue"></i> Tối (PM)
+                                    </button>
+                                </div>
+                                <div class="time-presets" style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center;">
+                                    <span style="font-size: 11px; color: var(--text-secondary); margin-right: 2px;">Chọn nhanh:</span>
+                                    <button type="button" class="preset-btn" onclick="setPresetTime('08:00')" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #34d399; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">Sáng (08:00)</button>
+                                    <button type="button" class="preset-btn" onclick="setPresetTime('12:00')" style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); color: #facc15; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">Trưa (12:00)</button>
+                                    <button type="button" class="preset-btn" onclick="setPresetTime('18:00')" style="background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.2); color: #fb923c; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">Chiều (18:00)</button>
+                                    <button type="button" class="preset-btn" onclick="setPresetTime('20:00')" style="background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.2); color: #c084fc; font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">Tối (20:00)</button>
+                                </div>
                             </div>
                         </div>
                         <!-- Color Selection for Pills (Elderly helper feature) -->
