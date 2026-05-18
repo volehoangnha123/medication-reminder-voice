@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timedelta
 
 # User PC clock is 5 minutes slow (e.g. 8:56 vs 9:01), so we add a global 5-minute offset to the entire system!
-SYSTEM_TIME_OFFSET_MINUTES = 5
+SYSTEM_TIME_OFFSET_MINUTES = 0
 
 def get_now():
     """Returns the current date and time adjusted by the system offset."""

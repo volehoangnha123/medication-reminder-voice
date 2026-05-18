@@ -1,6 +1,6 @@
 // Global state to track current active reminder in modal
 let activeReminderLogId = null;
-let timeOffsetMs = 5 * 60 * 1000; // Global 5-minute offset to fix slow client/PC clocks!
+let timeOffsetMs = 0; // Global 5-minute offset to fix slow client/PC clocks!
 
 // Clock tick utility
 function initClock() {
@@ -343,30 +343,9 @@ function showReminderModal(data) {
         console.log("Audio autoplay prevented by browser permissions.");
     }
     
-    // 2. Synthesize browser-based voice notification (Web Speech API) in Vietnamese
-    try {
-        if ('speechSynthesis' in window) {
-            // Cancel any active speech to avoid overlaps
-            window.speechSynthesis.cancel();
-            
-            const message = `Đã đến giờ uống thuốc rồi ạ. Bạn có lịch uống thuốc ${data.med_name}, liều lượng ${data.dosage}. Bạn đã uống thuốc chưa ạ?`;
-            const utterance = new SpeechSynthesisUtterance(message);
-            utterance.lang = 'vi-VN';
-            utterance.volume = 1.0;
-            utterance.rate = 0.95; // Gentle clear speaking speed
-            
-            // Search for Vietnamese voice package if available on client machine
-            const voices = window.speechSynthesis.getVoices();
-            const viVoice = voices.find(voice => voice.lang.includes('vi') || voice.name.toLowerCase().includes('vietnam'));
-            if (viVoice) {
-                utterance.voice = viVoice;
-            }
-            
-            window.speechSynthesis.speak(utterance);
-        }
-    } catch (speechErr) {
-        console.warn("Speech synthesis failed: ", speechErr);
-    }
+    // 2. Browser-based voice notification (Web Speech API) has been removed.
+    // The Python backend (VoiceAssistant) handles playing the voice prompt directly
+    // to ensure it synchronizes properly with the microphone listening phase.
     
     const modal = document.getElementById('reminderModal');
     modal.classList.remove('hidden');
