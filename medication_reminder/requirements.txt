@@ -1,0 +1,6 @@
+flask
+schedule
+SpeechRecognition
+gTTS
+pygame
+pyttsx3
