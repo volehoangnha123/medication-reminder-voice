@@ -98,7 +98,8 @@ class MedicationScheduler(threading.Thread):
                     "med_name": med_name,
                     "dosage": dosage,
                     "scheduled_time": log['scheduled_time'],
-                    "retry_count": retries
+                    "retry_count": retries,
+                    "med_color": log.get('med_color', '#3b82f6')
                 })
             
             # 1. Compose spoken announcement

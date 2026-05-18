@@ -93,12 +93,13 @@ async function fetchPrescriptions() {
         countBadge.textContent = `${res.data.length} đơn thuốc`;
         container.innerHTML = res.data.map(p => {
             const dateStr = p.remind_date ? `<span class="date-tag"><i class="fa-solid fa-calendar-day"></i> ${formatDate(p.remind_date)}</span>` : `<span class="date-tag daily"><i class="fa-solid fa-repeat"></i> Hàng ngày</span>`;
+            const color = p.med_color || '#3b82f6';
             return `
             <div class="prescription-item" id="pres-item-${p.id}">
                 <div class="pres-info">
                     <div class="pres-avatar"><i class="fa-solid fa-pills"></i></div>
                     <div class="pres-details">
-                        <h5>${escapeHTML(p.med_name)}</h5>
+                        <h5><span class="med-color-dot" style="background-color: ${color}; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; box-shadow: 0 0 6px ${color};"></span>${escapeHTML(p.med_name)}</h5>
                         <p><i class="fa-solid fa-weight-hanging"></i> ${escapeHTML(p.dosage)} &nbsp;&nbsp; <span><i class="fa-solid fa-clock"></i> ${p.remind_time}</span> &nbsp;&nbsp; ${dateStr}</p>
                     </div>
                 </div>
@@ -147,6 +148,7 @@ async function fetchLogs() {
             }
             
             const dateStr = log.remind_date ? `<span class="date-tag"><i class="fa-solid fa-calendar-day"></i> ${formatDate(log.remind_date)}</span>` : `<span class="date-tag daily"><i class="fa-solid fa-repeat"></i> Hàng ngày</span>`;
+            const color = log.med_color || '#3b82f6';
             
             return `
                 <div class="timeline-item ${statusClass}" id="log-item-${log.log_id}">
@@ -155,7 +157,7 @@ async function fetchLogs() {
                         <div class="timeline-info">
                             <div class="timeline-time">${log.scheduled_time}</div>
                             <div class="timeline-med-details">
-                                <h5>${escapeHTML(log.med_name)}</h5>
+                                <h5><span class="med-color-dot" style="background-color: ${color}; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; box-shadow: 0 0 6px ${color};"></span>${escapeHTML(log.med_name)}</h5>
                                 <p><i class="fa-solid fa-pills"></i> ${escapeHTML(log.dosage)} &nbsp;&nbsp; ${dateStr} &nbsp;&nbsp; ${takenTimeInfo}</p>
                             </div>
                         </div>
@@ -236,13 +238,16 @@ async function submitPrescription(e) {
     const remindTime = document.getElementById('remindTime').value;
     const remindDate = document.getElementById('remindDate').value;
     
+    const medColorEl = document.querySelector('input[name="medColor"]:checked');
+    const medColor = medColorEl ? medColorEl.value : '#3b82f6';
+    
     if (!medName || !remindTime) return;
     
     try {
         const response = await fetch('/api/prescriptions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ med_name: medName, dosage: dosage, remind_time: remindTime, remind_date: remindDate })
+            body: JSON.stringify({ med_name: medName, dosage: dosage, remind_time: remindTime, remind_date: remindDate, med_color: medColor })
         });
         const res = await response.json();
         
@@ -388,6 +393,39 @@ function showReminderModal(data) {
     document.getElementById('modalMedName').textContent = data.med_name;
     document.getElementById('modalMedDosage').innerHTML = `<i class="fa-solid fa-pills"></i> Liều lượng: ${data.dosage}`;
     document.getElementById('modalMedTime').innerHTML = `<i class="fa-solid fa-clock"></i> Giờ uống: ${data.scheduled_time}`;
+    
+    // Dynamic color coding for the alert modal
+    const color = data.med_color || '#3b82f6';
+    
+    const modalContent = document.querySelector('#reminderModal .modal-content');
+    if (modalContent) {
+        modalContent.style.borderColor = color;
+        modalContent.style.boxShadow = `0 0 25px ${color}80, var(--shadow-main)`;
+    }
+    
+    const modalMedName = document.getElementById('modalMedName');
+    if (modalMedName) {
+        modalMedName.style.color = color;
+        modalMedName.style.textShadow = `0 0 8px ${color}40`;
+    }
+    
+    const modalAlertIcon = document.querySelector('#reminderModal .modal-header i');
+    if (modalAlertIcon) {
+        modalAlertIcon.style.color = color;
+    }
+    
+    const pulseDot = document.querySelector('#reminderModal .pulse-dot');
+    if (pulseDot) {
+        pulseDot.style.backgroundColor = color;
+        pulseDot.style.boxShadow = `0 0 0 0 ${color}`;
+    }
+    
+    const micRipple = document.querySelector('#reminderModal .mic-ripple-small');
+    if (micRipple) {
+        micRipple.style.borderColor = color;
+        micRipple.style.color = color;
+        micRipple.style.boxShadow = `0 0 15px ${color}30`;
+    }
     
     // 1. Play alert chime sound
     try {

@@ -184,64 +184,130 @@ class VoiceAssistant:
 
     def parse_add_prescription_command(self, text):
         """
-        Parses a voice command to add a prescription.
-        Expected formats:
-        - "thêm thuốc [tên thuốc] uống lúc [giờ] giờ [phút] ngày [ngày] tháng [tháng]"
-        - "nhắc uống [tên thuốc] vào lúc [giờ] giờ ngày [ngày]/[tháng]"
-        Returns: (med_name, dosage, remind_time, remind_date) or None
+        Parses a Vietnamese voice command to add a prescription with extremely high resilience.
+        Matches various natural language phrasing and automatically extracts pill colors:
+        - "Thêm thuốc Aspirin màu đỏ uống lúc 9 giờ sáng"
+        - "Thêm Panadol màu xanh lúc 9h30"
+        - "Nhắc tôi uống Vitamin C màu vàng lúc 12h"
         """
-        # Lowercase normalize
-        text = text.lower()
+        text = text.lower().strip()
         
-        # 1. Parse Time & Medication Name first
-        match = re.search(r'thuốc\s+(.*?)\s+(?:uống\s+)?lúc\s+(\d{1,2})\s*giờ\s*(?:(\d{1,2})\s*(?:phút)?)?', text)
+        # 1. Action keywords (ensure this is a creation request):
+        action_keywords = ["thêm", "nhắc", "uống", "tạo", "lịch", "lên lịch", "nhắc nhở", "thêm thuốc"]
+        if not any(kw in text for kw in action_keywords):
+            return None
+            
+        # 2. Extract Pill Color (Vietnamese word matching)
+        color_map = {
+            "đỏ": "#ef4444",
+            "xanh lá": "#10b981",
+            "xanh lục": "#10b981",
+            "xanh dương": "#3b82f6",
+            "xanh biển": "#3b82f6",
+            "xanh": "#3b82f6",
+            "vàng": "#eab308",
+            "tím": "#a855f7",
+            "cam": "#f97316",
+            "hồng": "#ec4899"
+        }
+        med_color = "#3b82f6"  # default beautiful blue
         
-        if match:
-            med_name = match.group(1).strip()
-            # Clean up med name connector words
-            for word in ["uống", "ngày", "vào"]:
-                med_name = med_name.replace(word, "").strip()
-            med_name = med_name.title()
+        for color_name, hex_code in color_map.items():
+            # Check for "màu đỏ" or just "đỏ" as a separate word to avoid substring mismatches
+            màu_pattern = r'\bmàu\s+' + re.escape(color_name) + r'\b'
+            đơn_pattern = r'\b' + re.escape(color_name) + r'\b'
             
-            hours = int(match.group(2))
-            minutes = int(match.group(3)) if match.group(3) else 0
+            if re.search(màu_pattern, text):
+                med_color = hex_code
+                text = re.sub(màu_pattern, "", text) # clean color word from query
+                break
+            elif re.search(đơn_pattern, text):
+                # Ensure it's not part of standard medicine prefixes
+                med_color = hex_code
+                text = re.sub(đơn_pattern, "", text)
+                break
             
-            # Clamp hours/minutes
-            hours = max(0, min(23, hours))
-            minutes = max(0, min(59, minutes))
-            remind_time = f"{hours:02d}:{minutes:02d}"
+        # 3. Extract Time
+        # Matches patterns like "lúc 9 giờ 30", "lúc 9h30", "lúc 9 giờ", "lúc 9h", "vào 9h", "lúc 09:30"
+        time_match = re.search(
+            r'(?:lúc|vào|khoảng|ở)?\s*(\d{1,2})\s*(?:giờ|h|:)\s*(\d{1,2})?\s*(?:phút)?', 
+            text
+        )
+        
+        if not time_match:
+            return None
             
-            # 2. Parse Date
-            remind_date = None
-            
-            # Check for: "ngày 20 tháng 5 năm 2026" or "ngày 20 tháng 5"
-            date_match = re.search(r'ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})(?:\s+năm\s+(\d{4}))?', text)
-            if date_match:
-                day = int(date_match.group(1))
-                month = int(date_match.group(2))
-                year = int(date_match.group(3)) if date_match.group(3) else datetime.now().year
-                remind_date = f"{year:04d}-{month:02d}-{day:02d}"
-            else:
-                # Check for: "ngày 20/05/2026" or "ngày 20-5"
-                date_match_2 = re.search(r'ngày\s+(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?', text)
-                if date_match_2:
-                    day = int(date_match_2.group(1))
-                    month = int(date_match_2.group(2))
-                    year_val = date_match_2.group(3)
-                    if year_val:
-                        year = int(year_val)
-                        if year < 100:
-                            year += 2000
-                    else:
-                        year = datetime.now().year
-                    remind_date = f"{year:04d}-{month:02d}-{day:02d}"
-                    
-            # Default to today's date if no date is specified to satisfy the date reminder requirement
-            if not remind_date:
-                remind_date = datetime.now().strftime("%Y-%m-%d")
+        hours = int(time_match.group(1))
+        minutes = int(time_match.group(2)) if time_match.group(2) else 0
+        
+        # Check if they said "chiều", "tối", "đêm" to adjust 12-hour clock
+        if any(word in text for word in ["chiều", "tối", "đêm", "pm"]) and hours < 12:
+            hours += 12
+        
+        hours = max(0, min(23, hours))
+        minutes = max(0, min(59, minutes))
+        remind_time = f"{hours:02d}:{minutes:02d}"
+        
+        # 4. Extract Medication Name by isolating from time and dates
+        med_name = text
+        time_str_raw = time_match.group(0)
+        med_name = med_name.replace(time_str_raw, "")
+        
+        # Remove date patterns from the medicine name
+        date_pattern = r'ngày\s+\d{1,2}\s+tháng\s+\d{1,2}(?:\s+năm\s+\d{4})?'
+        date_pattern_2 = r'ngày\s+\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?'
+        med_name = re.sub(date_pattern, "", med_name)
+        med_name = re.sub(date_pattern_2, "", med_name)
+        
+        # Clean prefix action words
+        prefixes_to_remove = [
+            "thêm thuốc", "thêm", "nhắc tôi uống", "nhắc uống", "nhắc nhở uống", 
+            "nhắc", "uống", "tạo lịch nhắc thuốc", "tạo lịch nhắc", "tạo lịch", 
+            "lên lịch", "nhắc nhở", "hộ", "giúp", "tôi", "cho"
+        ]
+        
+        for prefix in sorted(prefixes_to_remove, key=len, reverse=True):
+            if med_name.startswith(prefix):
+                med_name = med_name[len(prefix):].strip()
                 
-            dosage = "1 viên"
-            return med_name, dosage, remind_time, remind_date
+        # Clean connector words
+        connectors = ["uống", "vào lúc", "lúc", "vào", "ngày"]
+        for conn in connectors:
+            med_name = re.sub(r'\b' + re.escape(conn) + r'\b', "", med_name)
+            
+        med_name = re.sub(r'\s+', " ", med_name).strip(" ,.-/?!").strip()
+        med_name = med_name.title()
+        
+        if not med_name or len(med_name) < 2:
+            return None
+            
+        # 5. Extract Date
+        remind_date = None
+        date_match = re.search(r'ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})(?:\s+năm\s+(\d{4}))?', text)
+        if date_match:
+            day = int(date_match.group(1))
+            month = int(date_match.group(2))
+            year = int(date_match.group(3)) if date_match.group(3) else datetime.now().year
+            remind_date = f"{year:04d}-{month:02d}-{day:02d}"
+        else:
+            date_match_2 = re.search(r'ngày\s+(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?', text)
+            if date_match_2:
+                day = int(date_match_2.group(1))
+                month = int(date_match_2.group(2))
+                year_val = date_match_2.group(3)
+                if year_val:
+                    year = int(year_val)
+                    if year < 100:
+                        year += 2000
+                else:
+                    year = datetime.now().year
+                remind_date = f"{year:04d}-{month:02d}-{day:02d}"
+                
+        if not remind_date:
+            remind_date = datetime.now().strftime("%Y-%m-%d")
+            
+        dosage = "1 viên"
+        return med_name, dosage, remind_time, remind_date, med_color
         
         return None
 

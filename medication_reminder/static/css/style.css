@@ -1048,3 +1048,55 @@ input:focus {
     color: var(--text-muted);
     margin-top: 2px;
 }
+
+/* Color Selector for Prescription Form */
+.color-selector-group {
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+
+.color-options {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.color-option-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.color-option-btn:hover {
+    transform: scale(1.18);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.color-option-btn input[type="radio"] {
+    display: none; /* Hide standard radio circle */
+}
+
+.color-checkmark {
+    color: #ffffff;
+    font-size: 13px;
+    display: none; /* Hidden by default */
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.color-option-btn input[type="radio"]:checked + .color-checkmark {
+    display: inline-block; /* Show checkmark when checked */
+}
+
+.color-option-btn:has(input[type="radio"]:checked) {
+    border-color: #ffffff !important;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+}

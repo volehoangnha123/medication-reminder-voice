@@ -32,16 +32,19 @@ def init_db():
             dosage TEXT NOT NULL,
             remind_date TEXT,          -- Format: "YYYY-MM-DD" or NULL (daily)
             remind_time TEXT NOT NULL, -- Format: "HH:MM" (e.g. "08:00")
+            med_color TEXT DEFAULT '#3b82f6', -- High-contrast color for elderly (default blue)
             active INTEGER DEFAULT 1,  -- 1 = Active, 0 = Inactive
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
-    # Migrate table to add remind_date if existing database doesn't have it
+    # Migrate table to add remind_date or med_color if existing database doesn't have them
     cursor.execute("PRAGMA table_info(prescriptions)")
     columns = [col['name'] for col in cursor.fetchall()]
     if 'remind_date' not in columns:
         cursor.execute("ALTER TABLE prescriptions ADD COLUMN remind_date TEXT")
+    if 'med_color' not in columns:
+        cursor.execute("ALTER TABLE prescriptions ADD COLUMN med_color TEXT DEFAULT '#3b82f6'")
     
     # Create medication_logs table
     cursor.execute("""
@@ -59,8 +62,8 @@ def init_db():
     conn.commit()
     conn.close()
     print(f"Database initialized successfully at {DB_PATH}")
-
-def add_prescription(med_name, dosage, remind_time, remind_date=None):
+ 
+def add_prescription(med_name, dosage, remind_time, remind_date=None, med_color='#3b82f6'):
     """Adds a new prescription to the database and generates today's log entry if active and date matches."""
     conn = get_connection()
     cursor = conn.cursor()
@@ -70,8 +73,8 @@ def add_prescription(med_name, dosage, remind_time, remind_date=None):
         remind_date = None
         
     cursor.execute(
-        "INSERT INTO prescriptions (med_name, dosage, remind_time, remind_date) VALUES (?, ?, ?, ?)",
-        (med_name, dosage, remind_time, remind_date)
+        "INSERT INTO prescriptions (med_name, dosage, remind_time, remind_date, med_color) VALUES (?, ?, ?, ?, ?)",
+        (med_name, dosage, remind_time, remind_date, med_color)
     )
     pres_id = cursor.lastrowid
     conn.commit()
@@ -165,7 +168,8 @@ def get_logs_by_date(date_str):
             p.id as prescription_id,
             p.med_name, 
             p.dosage,
-            p.remind_date
+            p.remind_date,
+            p.med_color
         FROM medication_logs l
         JOIN prescriptions p ON l.prescription_id = p.id
         WHERE l.date = ?
@@ -200,7 +204,8 @@ def get_pending_logs_for_scheduler(current_time_str, date_str):
             l.status, 
             p.id as prescription_id,
             p.med_name, 
-            p.dosage 
+            p.dosage,
+            p.med_color
         FROM medication_logs l
         JOIN prescriptions p ON l.prescription_id = p.id
         WHERE l.date = ? AND l.status = 'PENDING' AND l.scheduled_time <= ?

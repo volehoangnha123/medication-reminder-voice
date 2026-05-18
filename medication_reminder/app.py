@@ -112,7 +112,8 @@ def add_prescription_api():
         else:
             remind_date = None
             
-        pres_id = add_prescription(med_name, dosage, remind_time, remind_date)
+        med_color = data.get('med_color', '#3b82f6')
+        pres_id = add_prescription(med_name, dosage, remind_time, remind_date, med_color=med_color)
         
         date_desc = f" ngày {remind_date}" if remind_date else " hàng ngày"
         msg = f"Đã thêm đơn thuốc: {med_name} ({dosage}) vào lúc {remind_time}{date_desc}"
@@ -202,8 +203,8 @@ def trigger_voice_command():
         # 1. Check if it's an "add prescription" command
         parsed = assistant.parse_add_prescription_command(voice_text)
         if parsed:
-            med_name, dosage, remind_time, remind_date = parsed
-            pres_id = add_prescription(med_name, dosage, remind_time, remind_date)
+            med_name, dosage, remind_time, remind_date, med_color = parsed
+            pres_id = add_prescription(med_name, dosage, remind_time, remind_date, med_color=med_color)
             date_desc = f" ngày {remind_date}" if remind_date else " hàng ngày"
             msg = f"Thành công! Đã thêm lịch nhắc: thuốc {med_name}, liều lượng {dosage}, lúc {remind_time}{date_desc}."
             add_chat_history("assistant", msg)
@@ -267,8 +268,8 @@ def process_voice_text_api():
         # 1. Check if it's an "add prescription" command
         parsed = assistant.parse_add_prescription_command(voice_text)
         if parsed:
-            med_name, dosage, remind_time, remind_date = parsed
-            pres_id = add_prescription(med_name, dosage, remind_time, remind_date)
+            med_name, dosage, remind_time, remind_date, med_color = parsed
+            pres_id = add_prescription(med_name, dosage, remind_time, remind_date, med_color=med_color)
             date_desc = f" ngày {remind_date}" if remind_date else " hàng ngày"
             msg = f"Thành công! Đã thêm lịch nhắc: thuốc {med_name}, liều lượng {dosage}, lúc {remind_time}{date_desc}."
             add_chat_history("assistant", msg)
