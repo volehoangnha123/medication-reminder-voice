@@ -1,0 +1,22 @@
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local Database
+medication_reminder/medication_reminder.db
+
+# Audio Caching
+medication_reminder/static/audio/*.mp3
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE/OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

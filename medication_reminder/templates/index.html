@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medi-Voice | Trợ Lý Nhắc Thuốc Thông Minh</title>
+    <!-- Google Fonts: Inter & Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for beautiful modern icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Background Ambient Glows -->
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <!-- Active Reminder Modal Overlay -->
+    <div id="reminderModal" class="modal-overlay hidden">
+        <div class="modal-content glass-card pulse-border">
+            <div class="modal-header">
+                <span class="pulse-dot red"></span>
+                <h3><i class="fa-solid fa-bell-exclamation text-red animate-bounce"></i> ĐẾN GIỜ UỐNG THUỐC!</h3>
+            </div>
+            <div class="modal-body">
+                <div class="medication-alert-info">
+                    <h1 id="modalMedName">Paracetamol</h1>
+                    <p id="modalMedDosage"><i class="fa-solid fa-pills"></i> Liều lượng: 1 viên</p>
+                    <p id="modalMedTime"><i class="fa-solid fa-clock"></i> Giờ uống: 08:00</p>
+                </div>
+                <div class="voice-instruction">
+                    <div class="mic-ripple-small">
+                        <i class="fa-solid fa-microphone"></i>
+                    </div>
+                    <p>Trợ lý đang đọc lời nhắc & lắng nghe giọng nói của bạn...</p>
+                    <p class="voice-help">Hãy nói: <strong>"Đã uống"</strong> hoặc <strong>"Bỏ qua"</strong></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="manualResolveReminder('TAKEN')" class="btn btn-success"><i class="fa-solid fa-check"></i> Xác nhận Đã Uống (Thủ công)</button>
+                <button onclick="manualResolveReminder('MISSED')" class="btn btn-danger"><i class="fa-solid fa-xmark"></i> Bỏ qua (Thủ công)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Top Navigation / Header -->
+        <header class="app-header glass-card">
+            <div class="brand">
+                <div class="logo-wrapper">
+                    <i class="fa-solid fa-prescription-bottle-medical logo-icon"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Medi-Voice</h1>
+                    <p>Trợ Lý Nhắc Thuốc & Quản Lý Đơn Thuốc Bằng Giọng Nói</p>
+                </div>
+            </div>
+            <div class="header-status">
+                <div id="liveClock" class="clock-display">00:00:00</div>
+                <div class="status-indicator">
+                    <span class="indicator-dot green"></span>
+                    <span class="status-label">Hệ thống sẵn sàng</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Compliance Statistics Ribbon -->
+        <section class="stats-ribbon">
+            <div class="stat-card glass-card">
+                <div class="stat-icon purple"><i class="fa-solid fa-chart-line"></i></div>
+                <div class="stat-info">
+                    <h4 id="statRate">0%</h4>
+                    <p>Tỷ lệ tuân thủ</p>
+                </div>
+            </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="stat-info">
+                    <h4 id="statTaken">0</h4>
+                    <p>Đã uống hôm nay</p>
+                </div>
+            </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
+                <div class="stat-info">
+                    <h4 id="statMissed">0</h4>
+                    <p>Bỏ qua / Trễ</p>
+                </div>
+            </div>
+            <div class="stat-card glass-card">
+                <div class="stat-icon blue"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                <div class="stat-info">
+                    <h4 id="statPending">0</h4>
+                    <p>Đang chờ uống</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Body Workspace -->
+        <main class="workspace-grid">
+            
+            <!-- Left Side: Add Prescription & Voice Controller -->
+            <div class="workspace-left">
+                
+                <!-- Voice Assistant Trigger Card -->
+                <div class="voice-assistant-card glass-card">
+                    <h2><i class="fa-solid fa-wand-magic-sparkles text-purple"></i> Điều Khiển Giọng Nói</h2>
+                    <p class="description-text">Bấm nút để đánh thức trợ lý, sau đó ra lệnh thêm thuốc hoặc xác nhận uống thuốc.</p>
+                    
+                    <div class="mic-container">
+                        <button id="micBtn" class="mic-button" onclick="triggerMic()">
+                            <div class="mic-ripples">
+                                <div class="ripple"></div>
+                                <div class="ripple"></div>
+                            </div>
+                            <div class="mic-icon-wrapper">
+                                <i class="fa-solid fa-microphone"></i>
+                            </div>
+                        </button>
+                        <p id="micStatusText" class="mic-status">Nhấp để ra lệnh giọng nói</p>
+                    </div>
+
+                    <div class="voice-examples">
+                        <h5>Mẫu câu lệnh hỗ trợ:</h5>
+                        <ul>
+                            <li><i class="fa-regular fa-comment-dots text-purple"></i> "Thêm thuốc <strong>Paracetamol</strong> uống lúc <strong>8 giờ</strong> sáng <strong>ngày 20 tháng 5</strong>"</li>
+                            <li><i class="fa-regular fa-comment-dots text-purple"></i> "Thêm thuốc <strong>Aspirin</strong> uống lúc <strong>20 giờ 30 phút</strong>" (lặp hàng ngày)</li>
+                            <li><i class="fa-regular fa-comment-dots text-purple"></i> "Xác nhận <strong>đã uống</strong> thuốc" / "<strong>Bỏ qua</strong> thuốc"</li>
+                        </ul>
+                    </div>
+                </div>
+ 
+                <!-- Live Chat/Console Log -->
+                <div class="chat-log-card glass-card">
+                    <h2><i class="fa-solid fa-terminal text-blue"></i> Nhật Ký Trợ Lý Giọng Nói</h2>
+                    <div id="chatConsole" class="chat-console">
+                        <!-- Chat messages will be injected here -->
+                    </div>
+                </div>
+ 
+                <!-- Add Prescription Form Card -->
+                <div class="prescription-form-card glass-card">
+                    <h2><i class="fa-solid fa-plus-circle text-green"></i> Thêm Đơn Thuốc Thủ Công</h2>
+                    <form id="addPrescriptionForm" onsubmit="submitPrescription(event)">
+                        <div class="form-group">
+                            <label for="medName"><i class="fa-solid fa-pills text-purple"></i> Tên thuốc</label>
+                            <input type="text" id="medName" placeholder="Ví dụ: Paracetamol, Vitamin C..." required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="dosage"><i class="fa-solid fa-weight-hanging text-blue"></i> Liều lượng</label>
+                                <input type="text" id="dosage" placeholder="Ví dụ: 1 viên, 2 muỗng..." value="1 viên" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="remindDate"><i class="fa-solid fa-calendar-days text-purple"></i> Ngày nhắc</label>
+                                <input type="date" id="remindDate">
+                                <span class="input-desc">Để trống để nhắc lại hàng ngày</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="remindTime"><i class="fa-solid fa-clock text-green"></i> Giờ nhắc</label>
+                                <input type="time" id="remindTime" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fa-solid fa-floppy-disk"></i> Lưu Đơn Thuốc
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Side: Today's Timeline Schedule -->
+            <div class="workspace-right">
+                
+                <!-- Active Medication Prescriptions List -->
+                <div class="prescriptions-list-card glass-card">
+                    <div class="card-header-flex">
+                        <h2><i class="fa-solid fa-list-check text-purple"></i> Danh Sách Đơn Thuốc Hiện Có</h2>
+                        <span class="badge" id="prescriptionsCount">0 đơn thuốc</span>
+                    </div>
+                    <div id="prescriptionsContainer" class="prescriptions-container">
+                        <!-- Prescription cards injected here -->
+                    </div>
+                </div>
+
+                <!-- Today's Compliance Log / Schedule Timeline -->
+                <div class="timeline-card glass-card">
+                    <div class="card-header-flex">
+                        <h2><i class="fa-solid fa-calendar-day text-blue"></i> Lịch Trình Uống Thuốc Hôm Nay</h2>
+                        <span class="date-badge" id="currentDateText">18/05/2026</span>
+                    </div>
+                    <p class="description-text">Lịch trình tự động lập lịch hàng ngày cho tất cả các loại thuốc đang có hiệu lực.</p>
+                    
+                    <div id="timelineContainer" class="timeline-container">
+                        <!-- Timeline entries injected here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- App Footer -->
+        <footer class="app-footer">
+            <p>Medi-Voice Medication Reminder App &copy; 2026. Môn lập trình Python.</p>
+        </footer>
+    </div>
+
+    <!-- Custom Script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
