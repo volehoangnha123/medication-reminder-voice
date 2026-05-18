@@ -189,11 +189,12 @@ class VoiceAssistant:
         - "Thêm thuốc Aspirin màu đỏ uống lúc 9 giờ sáng"
         - "Thêm Panadol màu xanh lúc 9h30"
         - "Nhắc tôi uống Vitamin C màu vàng lúc 12h"
+        - "Vui lòng uống thuốc Vitamin D3 liều lượng 1 viên" (smart default to current time + 1 min)
         """
         text = text.lower().strip()
         
         # 1. Action keywords (ensure this is a creation request):
-        action_keywords = ["thêm", "nhắc", "uống", "tạo", "lịch", "lên lịch", "nhắc nhở", "thêm thuốc"]
+        action_keywords = ["thêm", "nhắc", "uống", "tạo", "lịch", "lên lịch", "nhắc nhở", "thêm thuốc", "vui lòng"]
         if not any(kw in text for kw in action_keywords):
             return None
             
@@ -213,7 +214,6 @@ class VoiceAssistant:
         med_color = "#3b82f6"  # default beautiful blue
         
         for color_name, hex_code in color_map.items():
-            # Check for "màu đỏ" or just "đỏ" as a separate word to avoid substring mismatches
             màu_pattern = r'\bmàu\s+' + re.escape(color_name) + r'\b'
             đơn_pattern = r'\b' + re.escape(color_name) + r'\b'
             
@@ -222,12 +222,22 @@ class VoiceAssistant:
                 text = re.sub(màu_pattern, "", text) # clean color word from query
                 break
             elif re.search(đơn_pattern, text):
-                # Ensure it's not part of standard medicine prefixes
                 med_color = hex_code
                 text = re.sub(đơn_pattern, "", text)
                 break
+                
+        # 3. Extract Dosage if mentioned: e.g. "liều lượng 1 viên", "liều 2 viên", "uống 1 viên"
+        # Using word boundaries \b to prevent matching "g" in "giờ"!
+        dosage_match = re.search(
+            r'(?:liều lượng|liều|với liều|lượng)?\s*(\d+)\s*\b(viên|vỉ|ống|muỗng|giọt|ml|g|viên nang)\b', 
+            text
+        )
+        dosage = "1 viên"
+        if dosage_match:
+            dosage = f"{dosage_match.group(1)} {dosage_match.group(2)}"
+            text = text.replace(dosage_match.group(0), "") # clean dosage word from query
             
-        # 3. Extract Time
+        # 4. Extract Time
         # Matches patterns like "lúc 9 giờ 30", "lúc 9h30", "lúc 9 giờ", "lúc 9h", "vào 9h", "lúc 09:30"
         time_match = re.search(
             r'(?:lúc|vào|khoảng|ở)?\s*(\d{1,2})\s*(?:giờ|h|:)\s*(\d{1,2})?\s*(?:phút)?', 
@@ -235,24 +245,30 @@ class VoiceAssistant:
         )
         
         if not time_match:
-            return None
+            # Smart fallback: if no time is mentioned, default to current time + 1 minute
+            # so they can see and test the reminder instantly!
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            target_time = now + timedelta(minutes=1)
+            remind_time = target_time.strftime("%H:%M")
+        else:
+            hours = int(time_match.group(1))
+            minutes = int(time_match.group(2)) if time_match.group(2) else 0
             
-        hours = int(time_match.group(1))
-        minutes = int(time_match.group(2)) if time_match.group(2) else 0
-        
-        # Check if they said "chiều", "tối", "đêm" to adjust 12-hour clock
-        if any(word in text for word in ["chiều", "tối", "đêm", "pm"]) and hours < 12:
-            hours += 12
-        
-        hours = max(0, min(23, hours))
-        minutes = max(0, min(59, minutes))
-        remind_time = f"{hours:02d}:{minutes:02d}"
-        
-        # 4. Extract Medication Name by isolating from time and dates
+            # Check if they said "chiều", "tối", "đêm" to adjust 12-hour clock
+            if any(word in text for word in ["chiều", "tối", "đêm", "pm"]) and hours < 12:
+                hours += 12
+            
+            hours = max(0, min(23, hours))
+            minutes = max(0, min(59, minutes))
+            remind_time = f"{hours:02d}:{minutes:02d}"
+            
+        # 5. Extract Medication Name by isolating from time and dates
         med_name = text
-        time_str_raw = time_match.group(0)
-        med_name = med_name.replace(time_str_raw, "")
-        
+        if time_match:
+            time_str_raw = time_match.group(0)
+            med_name = med_name.replace(time_str_raw, "")
+            
         # Remove date patterns from the medicine name
         date_pattern = r'ngày\s+\d{1,2}\s+tháng\s+\d{1,2}(?:\s+năm\s+\d{4})?'
         date_pattern_2 = r'ngày\s+\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?'
@@ -261,9 +277,10 @@ class VoiceAssistant:
         
         # Clean prefix action words
         prefixes_to_remove = [
+            "vui lòng uống thuốc", "vui lòng uống", "vui lòng nhắc", "vui lòng",
             "thêm thuốc", "thêm", "nhắc tôi uống", "nhắc uống", "nhắc nhở uống", 
             "nhắc", "uống", "tạo lịch nhắc thuốc", "tạo lịch nhắc", "tạo lịch", 
-            "lên lịch", "nhắc nhở", "hộ", "giúp", "tôi", "cho"
+            "lên lịch", "nhắc nhở", "hộ", "giúp", "tôi", "cho", "thuốc"
         ]
         
         for prefix in sorted(prefixes_to_remove, key=len, reverse=True):
