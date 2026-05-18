@@ -170,3 +170,12 @@ class MedicationScheduler(threading.Thread):
         """Gracefully stops the scheduler thread."""
         self.running = False
         print("Medication Scheduler stopping...")
+
+    def resolve_reminder_externally(self, log_id, status):
+        """Called by Flask API when a reminder is resolved via UI or browser voice."""
+        update_log_status(log_id, status)
+        with self.reminders_lock:
+            if log_id in self.active_reminders:
+                del self.active_reminders[log_id]
+        if self.on_reminder_resolved:
+            self.on_reminder_resolved(log_id, status)

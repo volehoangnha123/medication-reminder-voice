@@ -160,7 +160,7 @@ def update_log_status_api(log_id):
         if status not in ['TAKEN', 'MISSED', 'PENDING']:
             return jsonify({"success": False, "message": "Trạng thái không hợp lệ."}), 400
             
-        update_log_status(log_id, status)
+        scheduler.resolve_reminder_externally(log_id, status)
         msg = f"Đã cập nhật trạng thái lịch uống thuốc sang: {status}"
         add_chat_history("system", msg)
         
@@ -224,7 +224,7 @@ def trigger_voice_command():
             med_name = earliest_log['med_name']
             
             if assistant.is_confirm_taken_command(voice_text):
-                update_log_status(log_id, "TAKEN")
+                scheduler.resolve_reminder_externally(log_id, "TAKEN")
                 msg = f"Đã ghi nhận bạn đã uống thuốc {med_name} thành công."
                 add_chat_history("assistant", msg)
                 assistant.speak(msg, block=False)
@@ -232,7 +232,70 @@ def trigger_voice_command():
                 return jsonify({"success": True, "command_type": "confirm_taken", "text": voice_text, "result": msg})
                 
             elif assistant.is_skip_command(voice_text):
-                update_log_status(log_id, "MISSED")
+                scheduler.resolve_reminder_externally(log_id, "MISSED")
+                msg = f"Đã ghi nhận bỏ qua thuốc {med_name}."
+                add_chat_history("assistant", msg)
+                assistant.speak(msg, block=False)
+                event_queue.put({"type": "data_changed"})
+                return jsonify({"success": True, "command_type": "skip", "text": voice_text, "result": msg})
+                
+        # 3. If command not recognized
+        msg = "Tôi đã nghe được giọng nói của bạn, nhưng chưa rõ yêu cầu. Bạn hãy nói rõ hơn nhé, ví dụ: Thêm thuốc Paracetamol lúc mười hai giờ."
+        add_chat_history("assistant", msg)
+        assistant.speak(msg, block=False)
+        return jsonify({"success": False, "message": "Command not recognized", "text": voice_text})
+        
+    except Exception as e:
+        add_chat_history("system", f"Có lỗi xảy ra: {str(e)}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/voice/text', methods=['POST'])
+def process_voice_text_api():
+    """
+    Endpoint that accepts pre-recognized voice text from the client browser.
+    This bypasses the need for local PyAudio/Microphone on the server, 
+    making it 100% robust and compatible on any PC!
+    """
+    try:
+        data = request.get_json() or {}
+        voice_text = data.get('text', '').strip()
+        if not voice_text:
+            return jsonify({"success": False, "message": "Nội dung văn bản trống."}), 400
+            
+        add_chat_history("user", voice_text)
+        
+        # 1. Check if it's an "add prescription" command
+        parsed = assistant.parse_add_prescription_command(voice_text)
+        if parsed:
+            med_name, dosage, remind_time, remind_date = parsed
+            pres_id = add_prescription(med_name, dosage, remind_time, remind_date)
+            date_desc = f" ngày {remind_date}" if remind_date else " hàng ngày"
+            msg = f"Thành công! Đã thêm lịch nhắc: thuốc {med_name}, liều lượng {dosage}, lúc {remind_time}{date_desc}."
+            add_chat_history("assistant", msg)
+            assistant.speak(msg, block=False)
+            event_queue.put({"type": "data_changed"})
+            return jsonify({"success": True, "command_type": "add_prescription", "text": voice_text, "result": msg})
+            
+        # 2. Check if it is a confirmation command for any currently active reminders
+        today_str = get_now().strftime("%Y-%m-%d")
+        logs = get_logs_by_date(today_str)
+        pending_logs = [l for l in logs if l['status'] == 'PENDING']
+        
+        if pending_logs:
+            earliest_log = pending_logs[0]
+            log_id = earliest_log['log_id']
+            med_name = earliest_log['med_name']
+            
+            if assistant.is_confirm_taken_command(voice_text):
+                scheduler.resolve_reminder_externally(log_id, "TAKEN")
+                msg = f"Đã ghi nhận bạn đã uống thuốc {med_name} thành công."
+                add_chat_history("assistant", msg)
+                assistant.speak(msg, block=False)
+                event_queue.put({"type": "data_changed"})
+                return jsonify({"success": True, "command_type": "confirm_taken", "text": voice_text, "result": msg})
+                
+            elif assistant.is_skip_command(voice_text):
+                scheduler.resolve_reminder_externally(log_id, "MISSED")
                 msg = f"Đã ghi nhận bỏ qua thuốc {med_name}."
                 add_chat_history("assistant", msg)
                 assistant.speak(msg, block=False)

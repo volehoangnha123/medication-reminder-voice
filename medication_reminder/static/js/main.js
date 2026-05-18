@@ -293,21 +293,76 @@ async function updateLogStatus(logId, status) {
     }
 }
 
-// 9. Manual Mic Trigger API Call
+// 9. Browser-Based Speech Recognition (Web Speech API) with Backend Text API Fallback
 async function triggerMic() {
-    setMicListening(true, "Đang khởi động mic và lắng nghe...");
+    // Check if Browser Speech Recognition is supported
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
-    try {
-        const response = await fetch('/api/voice/trigger', {
-            method: 'POST'
-        });
-        const res = await response.json();
-        console.log("Mic API Trigger response: ", res);
-    } catch (err) {
-        console.error("Error triggering microphone: ", err);
-    } finally {
-        setMicListening(false, "Nhấp để ra lệnh giọng nói");
-        refreshAllData();
+    if (SpeechRecognition) {
+        console.log("Using Browser-based SpeechRecognition (Web Speech API)...");
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'vi-VN';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        
+        recognition.onstart = () => {
+            setMicListening(true, "Trợ lý đang lắng nghe giọng nói tiếng Việt...");
+        };
+        
+        recognition.onerror = (e) => {
+            console.error("Browser speech recognition error: ", e);
+            setMicListening(false, "Lỗi nhận diện giọng nói");
+            // If user blocked microphone permission, warn them
+            if (e.error === 'not-allowed') {
+                alert("Vui lòng cấp quyền truy cập Microphone cho trình duyệt để ra lệnh bằng giọng nói!");
+            }
+        };
+        
+        recognition.onend = () => {
+            setMicListening(false, "Nhấp để ra lệnh giọng nói");
+        };
+        
+        recognition.onresult = async (event) => {
+            const voiceText = event.results[0][0].transcript;
+            console.log("Browser recognized text: ", voiceText);
+            
+            // Send the text to the backend for execution
+            try {
+                const response = await fetch('/api/voice/text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: voiceText })
+                });
+                const res = await response.json();
+                console.log("Backend voice text response: ", res);
+            } catch (err) {
+                console.error("Error sending voice text to backend: ", err);
+            } finally {
+                refreshAllData();
+            }
+        };
+        
+        recognition.start();
+    } else {
+        // Fallback to Server-side Microphone (requires PyAudio)
+        console.warn("Browser SpeechRecognition not supported, falling back to server-side PyAudio...");
+        setMicListening(true, "Đang khởi động mic máy chủ...");
+        try {
+            const response = await fetch('/api/voice/trigger', {
+                method: 'POST'
+            });
+            const res = await response.json();
+            console.log("Mic API Trigger response: ", res);
+            if (!res.success) {
+                alert("Lỗi Microphone máy chủ: " + res.message);
+            }
+        } catch (err) {
+            console.error("Error triggering server microphone: ", err);
+            alert("Lỗi kết nối máy chủ: " + err.message);
+        } finally {
+            setMicListening(false, "Nhấp để ra lệnh giọng nói");
+            refreshAllData();
+        }
     }
 }
 
@@ -349,6 +404,15 @@ function showReminderModal(data) {
     
     const modal = document.getElementById('reminderModal');
     modal.classList.remove('hidden');
+    
+    // Automatically trigger browser speech recognition after 4.5 seconds (giving time for backend voice to speak!)
+    setTimeout(() => {
+        // Only trigger if modal is still open and visible
+        if (!modal.classList.contains('hidden')) {
+            console.log("Automatically triggering browser speech recognition for hands-free confirmation...");
+            triggerMic();
+        }
+    }, 4500);
 }
 
 function hideReminderModal() {
