@@ -200,19 +200,7 @@ def trigger_voice_command():
             
         add_chat_history("user", voice_text)
         
-        # 1. Check if it's an "add prescription" command
-        parsed = assistant.parse_add_prescription_command(voice_text)
-        if parsed:
-            med_name, dosage, remind_time, remind_date, med_color = parsed
-            pres_id = add_prescription(med_name, dosage, remind_time, remind_date, med_color=med_color)
-            date_desc = f" ngày {remind_date}" if remind_date else " hàng ngày"
-            msg = f"Thành công! Đã thêm lịch nhắc: thuốc {med_name}, liều lượng {dosage}, lúc {remind_time}{date_desc}."
-            add_chat_history("assistant", msg)
-            assistant.speak(msg, block=False)
-            event_queue.put({"type": "data_changed"})
-            return jsonify({"success": True, "command_type": "add_prescription", "text": voice_text, "result": msg})
-            
-        # 2. Check if it is a confirmation command for any currently active reminders
+        # 1. Check if it is a confirmation command for any currently active reminders
         # We can look up active reminders or if none, find the earliest PENDING log for today
         today_str = get_now().strftime("%Y-%m-%d")
         logs = get_logs_by_date(today_str)
@@ -239,6 +227,18 @@ def trigger_voice_command():
                 assistant.speak(msg, block=False)
                 event_queue.put({"type": "data_changed"})
                 return jsonify({"success": True, "command_type": "skip", "text": voice_text, "result": msg})
+
+        # 2. Check if it's an "add prescription" command
+        parsed = assistant.parse_add_prescription_command(voice_text)
+        if parsed:
+            med_name, dosage, remind_time, remind_date, med_color = parsed
+            pres_id = add_prescription(med_name, dosage, remind_time, remind_date, med_color=med_color)
+            date_desc = f" ngày {remind_date}" if remind_date else " hàng ngày"
+            msg = f"Thành công! Đã thêm lịch nhắc: thuốc {med_name}, liều lượng {dosage}, lúc {remind_time}{date_desc}."
+            add_chat_history("assistant", msg)
+            assistant.speak(msg, block=False)
+            event_queue.put({"type": "data_changed"})
+            return jsonify({"success": True, "command_type": "add_prescription", "text": voice_text, "result": msg})
                 
         # 3. If command not recognized
         msg = "Tôi đã nghe được giọng nói của bạn, nhưng chưa rõ yêu cầu. Bạn hãy nói rõ hơn nhé, ví dụ: Thêm thuốc Paracetamol lúc mười hai giờ."
@@ -265,19 +265,7 @@ def process_voice_text_api():
             
         add_chat_history("user", voice_text)
         
-        # 1. Check if it's an "add prescription" command
-        parsed = assistant.parse_add_prescription_command(voice_text)
-        if parsed:
-            med_name, dosage, remind_time, remind_date, med_color = parsed
-            pres_id = add_prescription(med_name, dosage, remind_time, remind_date, med_color=med_color)
-            date_desc = f" ngày {remind_date}" if remind_date else " hàng ngày"
-            msg = f"Thành công! Đã thêm lịch nhắc: thuốc {med_name}, liều lượng {dosage}, lúc {remind_time}{date_desc}."
-            add_chat_history("assistant", msg)
-            assistant.speak(msg, block=False)
-            event_queue.put({"type": "data_changed"})
-            return jsonify({"success": True, "command_type": "add_prescription", "text": voice_text, "result": msg})
-            
-        # 2. Check if it is a confirmation command for any currently active reminders
+        # 1. Check if it is a confirmation command for any currently active reminders
         today_str = get_now().strftime("%Y-%m-%d")
         logs = get_logs_by_date(today_str)
         pending_logs = [l for l in logs if l['status'] == 'PENDING']
@@ -302,6 +290,18 @@ def process_voice_text_api():
                 assistant.speak(msg, block=False)
                 event_queue.put({"type": "data_changed"})
                 return jsonify({"success": True, "command_type": "skip", "text": voice_text, "result": msg})
+
+        # 2. Check if it's an "add prescription" command
+        parsed = assistant.parse_add_prescription_command(voice_text)
+        if parsed:
+            med_name, dosage, remind_time, remind_date, med_color = parsed
+            pres_id = add_prescription(med_name, dosage, remind_time, remind_date, med_color=med_color)
+            date_desc = f" ngày {remind_date}" if remind_date else " hàng ngày"
+            msg = f"Thành công! Đã thêm lịch nhắc: thuốc {med_name}, liều lượng {dosage}, lúc {remind_time}{date_desc}."
+            add_chat_history("assistant", msg)
+            assistant.speak(msg, block=False)
+            event_queue.put({"type": "data_changed"})
+            return jsonify({"success": True, "command_type": "add_prescription", "text": voice_text, "result": msg})
                 
         # 3. If command not recognized
         msg = "Tôi đã nghe được giọng nói của bạn, nhưng chưa rõ yêu cầu. Bạn hãy nói rõ hơn nhé, ví dụ: Thêm thuốc Paracetamol lúc mười hai giờ."

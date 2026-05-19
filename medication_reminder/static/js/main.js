@@ -137,6 +137,7 @@ async function fetchLogs() {
         const res = await response.json();
         
         const container = document.getElementById('timelineContainer');
+        if (!container) return;
         
         if (!res.success || res.data.length === 0) {
             container.innerHTML = `
@@ -148,20 +149,20 @@ async function fetchLogs() {
             return;
         }
         
-        container.innerHTML = res.data.map(log => {
-            let statusClass = 'pending';
-            let statusPillText = 'Chờ uống';
-            let takenTimeInfo = '';
-            
-            if (log.status === 'TAKEN') {
-                statusClass = 'taken';
-                statusPillText = 'Đã uống';
-                takenTimeInfo = `<span class="taken-time-tag"><i class="fa-solid fa-circle-check"></i> Đã uống lúc: ${log.taken_time}</span>`;
-            } else if (log.status === 'MISSED') {
-                statusClass = 'missed';
-                statusPillText = 'Bỏ qua';
-            }
-            
+        const pendingLogs = res.data.filter(log => log.status === 'PENDING');
+        
+        if (pendingLogs.length === 0) {
+            container.innerHTML = `
+                <div class="empty-placeholder" style="border: 1px dashed var(--success); background: rgba(16, 185, 129, 0.03); color: #34d399; padding: 24px;">
+                    <i class="fa-solid fa-circle-check" style="font-size: 24px; color: var(--success); display: block; margin-bottom: 8px;"></i>
+                    Tuyệt vời! Bạn đã hoàn thành tất cả lịch uống thuốc hôm nay.
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = pendingLogs.map(log => {
+            const statusClass = 'pending';
             const dateStr = log.remind_date ? `<span class="date-tag"><i class="fa-solid fa-calendar-day"></i> ${formatDate(log.remind_date)}</span>` : `<span class="date-tag daily"><i class="fa-solid fa-repeat"></i> Hàng ngày</span>`;
             const color = log.med_color || '#3b82f6';
             
@@ -173,20 +174,16 @@ async function fetchLogs() {
                             <div class="timeline-time">${log.scheduled_time}</div>
                             <div class="timeline-med-details">
                                 <h5><span class="med-color-dot" style="background-color: ${color}; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; box-shadow: 0 0 6px ${color};"></span>${escapeHTML(log.med_name)}</h5>
-                                <p><i class="fa-solid fa-pills"></i> ${escapeHTML(log.dosage)} &nbsp;&nbsp; ${dateStr} &nbsp;&nbsp; ${takenTimeInfo}</p>
+                                <p><i class="fa-solid fa-pills"></i> ${escapeHTML(log.dosage)} &nbsp;&nbsp; ${dateStr}</p>
                             </div>
                         </div>
                         <div class="timeline-actions">
-                            ${log.status === 'PENDING' ? `
-                                <button onclick="updateLogStatus(${log.log_id}, 'TAKEN')" class="btn-circle check" title="Xác nhận đã uống">
-                                    <i class="fa-solid fa-check"></i>
-                                </button>
-                                <button onclick="updateLogStatus(${log.log_id}, 'MISSED')" class="btn-circle skip" title="Đánh dấu bỏ qua">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            ` : `
-                                <span class="status-pill ${statusClass}">${statusPillText}</span>
-                            `}
+                            <button onclick="updateLogStatus(${log.log_id}, 'TAKEN')" class="btn-circle check" title="Xác nhận đã uống">
+                                <i class="fa-solid fa-check"></i>
+                            </button>
+                            <button onclick="updateLogStatus(${log.log_id}, 'MISSED')" class="btn-circle skip" title="Đánh dấu bỏ qua">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -558,5 +555,126 @@ function setPresetTime(timeVal) {
         toggleBtn.innerHTML = '<i class="fa-solid fa-cloud-sun text-yellow"></i> Sáng (AM)';
     } else {
         toggleBtn.innerHTML = '<i class="fa-solid fa-cloud-moon text-blue"></i> Tối (PM)';
+    }
+}
+
+// Show statistics details in a beautiful glassmorphic modal
+async function showStatsModal(filterType) {
+    try {
+        const response = await fetch('/api/logs');
+        const res = await response.json();
+        
+        const listContainer = document.getElementById('statsModalList');
+        if (!listContainer) return;
+        
+        if (!res.success || res.data.length === 0) {
+            listContainer.innerHTML = `
+                <div class="empty-placeholder">
+                    <i class="fa-solid fa-calendar-xmark text-muted"></i>
+                    Không có lịch nhắc thuốc nào hôm nay.
+                </div>
+            `;
+            document.getElementById('statsModalTitle').textContent = "Danh Sách Trống";
+            document.getElementById('statsDetailsModal').classList.remove('hidden');
+            return;
+        }
+        
+        let filteredLogs = [];
+        let title = "Danh Sách Lịch Trình";
+        let iconClass = "fa-solid fa-chart-line text-purple";
+        let colorTheme = "#7c3aed";
+        
+        if (filterType === 'ALL') {
+            filteredLogs = res.data;
+            title = "Tất Cả Lịch Trình Hôm Nay";
+            iconClass = "fa-solid fa-chart-line text-purple";
+            colorTheme = "#7c3aed";
+        } else if (filterType === 'TAKEN') {
+            filteredLogs = res.data.filter(log => log.status === 'TAKEN');
+            title = "Thuốc Đã Uống Hôm Nay";
+            iconClass = "fa-solid fa-circle-check text-green";
+            colorTheme = "#10b981";
+        } else if (filterType === 'MISSED') {
+            filteredLogs = res.data.filter(log => log.status === 'MISSED');
+            title = "Thuốc Bỏ Qua / Trễ";
+            iconClass = "fa-solid fa-circle-xmark text-red";
+            colorTheme = "#ef4444";
+        } else if (filterType === 'PENDING') {
+            filteredLogs = res.data.filter(log => log.status === 'PENDING');
+            title = "Thuốc Đang Chờ Uống";
+            iconClass = "fa-solid fa-clock-rotate-left text-blue";
+            colorTheme = "#06b6d4";
+        }
+        
+        document.getElementById('statsModalTitle').textContent = title;
+        const iconEl = document.getElementById('statsModalIcon');
+        if (iconEl) {
+            iconEl.className = iconClass;
+            iconEl.style.color = colorTheme;
+        }
+        
+        const modalContent = document.querySelector('#statsDetailsModal .modal-content');
+        if (modalContent) {
+            modalContent.style.borderColor = colorTheme;
+            modalContent.style.boxShadow = `0 0 20px ${colorTheme}50, var(--shadow-main)`;
+        }
+        
+        if (filteredLogs.length === 0) {
+            listContainer.innerHTML = `
+                <div class="empty-placeholder" style="border: 1px dashed var(--border-color); padding: 20px; text-align: center; color: var(--text-muted); width: 100%;">
+                    <i class="fa-solid fa-prescription-bottle"></i>
+                    Không có đơn thuốc nào ở trạng thái này.
+                </div>
+            `;
+        } else {
+            listContainer.innerHTML = filteredLogs.map(log => {
+                let statusBadge = '';
+                if (log.status === 'TAKEN') {
+                    statusBadge = `<span class="status-pill taken">Đã uống lúc ${log.taken_time}</span>`;
+                } else if (log.status === 'MISSED') {
+                    statusBadge = `<span class="status-pill missed">Bỏ qua / Trễ</span>`;
+                } else {
+                    statusBadge = `<span class="status-pill pending">Chờ uống</span>`;
+                }
+                
+                const medColor = log.med_color || '#3b82f6';
+                const dateStr = log.remind_date ? `<span class="date-tag" style="margin-left: 8px;"><i class="fa-solid fa-calendar-day"></i> ${formatDate(log.remind_date)}</span>` : `<span class="date-tag daily" style="margin-left: 8px;"><i class="fa-solid fa-repeat"></i> Hàng ngày</span>`;
+                
+                return `
+                    <div class="stats-modal-item">
+                        <div class="stats-modal-med-info">
+                            <div class="pres-avatar" style="background: ${medColor}15; color: ${medColor};">
+                                <i class="fa-solid fa-pills"></i>
+                            </div>
+                            <div class="stats-modal-med-details">
+                                <h5 style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: white;">
+                                    <span style="background-color: ${medColor}; display: inline-block; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 6px ${medColor};"></span>
+                                    ${escapeHTML(log.med_name)}
+                                </h5>
+                                <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">
+                                    <i class="fa-solid fa-weight-hanging"></i> ${escapeHTML(log.dosage)} &nbsp;&nbsp; 
+                                    <i class="fa-solid fa-clock"></i> ${log.scheduled_time}
+                                    ${dateStr}
+                                </p>
+                            </div>
+                        </div>
+                        <div>
+                            ${statusBadge}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        document.getElementById('statsDetailsModal').classList.remove('hidden');
+    } catch (e) {
+        console.error("Error showing stats details modal: ", e);
+    }
+}
+
+function hideStatsModal() {
+    const modal = document.getElementById('statsDetailsModal');
+    if (modal) {
+        modal.classList.add('hidden');
     }
 }

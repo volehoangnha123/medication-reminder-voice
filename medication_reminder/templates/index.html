@@ -44,6 +44,24 @@
         </div>
     </div>
 
+    <!-- Stats Details Modal Overlay (Elderly-Friendly details view) -->
+    <div id="statsDetailsModal" class="modal-overlay hidden" onclick="hideStatsModal()">
+        <div class="modal-content glass-card" onclick="event.stopPropagation()" style="max-width: 600px;">
+            <div class="modal-header" style="justify-content: space-between; align-items: center; display: flex;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i id="statsModalIcon" class="fa-solid fa-list-check" style="font-size: 18px;"></i>
+                    <h3 id="statsModalTitle">Danh Sách Chi Tiết</h3>
+                </div>
+                <button onclick="hideStatsModal()" class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
+                <div id="statsModalList" class="stats-modal-list">
+                    <!-- Dynamic list will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Container -->
     <div class="container">
         <!-- Top Navigation / Header -->
@@ -68,28 +86,28 @@
 
         <!-- Compliance Statistics Ribbon -->
         <section class="stats-ribbon">
-            <div class="stat-card glass-card">
+            <div class="stat-card glass-card" onclick="showStatsModal('ALL')" title="Nhấp để xem tất cả lịch trình hôm nay">
                 <div class="stat-icon purple"><i class="fa-solid fa-chart-line"></i></div>
                 <div class="stat-info">
                     <h4 id="statRate">0%</h4>
                     <p>Tỷ lệ tuân thủ</p>
                 </div>
             </div>
-            <div class="stat-card glass-card">
+            <div class="stat-card glass-card" onclick="showStatsModal('TAKEN')" title="Nhấp để xem danh sách thuốc đã uống">
                 <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
                 <div class="stat-info">
                     <h4 id="statTaken">0</h4>
                     <p>Đã uống hôm nay</p>
                 </div>
             </div>
-            <div class="stat-card glass-card">
+            <div class="stat-card glass-card" onclick="showStatsModal('MISSED')" title="Nhấp để xem danh sách thuốc bỏ qua hoặc trễ">
                 <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
                 <div class="stat-info">
                     <h4 id="statMissed">0</h4>
                     <p>Bỏ qua / Trễ</p>
                 </div>
             </div>
-            <div class="stat-card glass-card">
+            <div class="stat-card glass-card" onclick="showStatsModal('PENDING')" title="Nhấp để xem danh sách thuốc đang chờ uống">
                 <div class="stat-icon blue"><i class="fa-solid fa-clock-rotate-left"></i></div>
                 <div class="stat-info">
                     <h4 id="statPending">0</h4>

@@ -2,7 +2,7 @@ import os
 import time
 import re
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Optional imports with robust fallbacks
 try:
@@ -247,7 +247,6 @@ class VoiceAssistant:
         if not time_match:
             # Smart fallback: if no time is mentioned, default to current time + 1 minute
             # so they can see and test the reminder instantly!
-            from datetime import datetime, timedelta
             now = datetime.now()
             target_time = now + timedelta(minutes=1)
             remind_time = target_time.strftime("%H:%M")
@@ -330,7 +329,7 @@ class VoiceAssistant:
 
     def is_confirm_taken_command(self, text):
         """Checks if the user confirmed taking the medication."""
-        keywords = ["đã uống", "uống rồi", "rồi", "ok", "xong", "xác nhận", "da uong", "uong roi", "yes", "confirm"]
+        keywords = ["đã uống", "uống rồi", "rồi", "ok", "xong", "xác nhận", "uống thuốc rồi", "đã uống thuốc", "xác nhận uống thuốc", "xác nhận đã uống thuốc", "da uong", "uong roi", "yes", "confirm"]
         return any(kw in text.lower() for kw in keywords)
 
     def is_skip_command(self, text):
