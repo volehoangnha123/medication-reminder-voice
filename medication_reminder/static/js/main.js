@@ -1,6 +1,6 @@
 // Global state to track current active reminder in modal
 let activeReminderLogId = null;
-let timeOffsetMs = 5 * 60 * 1000; // Global 5-minute offset to fix slow client/PC clocks!
+let timeOffsetMs = 0; // No offset - use real system time
 
 // Clock tick utility
 function initClock() {
